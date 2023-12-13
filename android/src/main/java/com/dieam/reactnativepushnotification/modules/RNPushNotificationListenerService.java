@@ -1,8 +1,11 @@
 package com.dieam.reactnativepushnotification.modules;
 
+import com.clevertap.android.sdk.CleverTapAPI;
+import com.clevertap.android.sdk.pushnotification.NotificationInfo;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -15,6 +18,8 @@ import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.WritableMap;
 
 import static com.dieam.reactnativepushnotification.modules.RNPushNotification.LOG_TAG;
+
+import java.util.Map;
 
 public class RNPushNotificationListenerService extends FirebaseMessagingService {
 
@@ -74,6 +79,24 @@ public class RNPushNotificationListenerService extends FirebaseMessagingService 
 
     @Override
     public void onMessageReceived(RemoteMessage message) {
-        mMessageReceivedHandler.handleReceivedMessage(message);
+        try {
+            if (message.getData().size() > 0) {
+                Bundle extras = new Bundle();
+                for (Map.Entry<String, String> entry : message.getData().entrySet()) {
+                    extras.putString(entry.getKey(), entry.getValue());
+                }
+
+                NotificationInfo info = CleverTapAPI.getNotificationInfo(extras);
+
+                if (info.fromCleverTap) {
+                    CleverTapAPI.createNotification(getApplicationContext(), extras);
+                } else {
+                    // not from CleverTap handle yourself or pass to another provider
+                    mMessageReceivedHandler.handleReceivedMessage(message);
+                }
+            }
+        } catch (Throwable t) {
+            Log.e("RNFirebase", "On message received: error parsing remote message", t);
+        }
     }
 }
